@@ -1,0 +1,11 @@
+# Local secrets / environment
+config.php
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.log
