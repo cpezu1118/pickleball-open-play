@@ -46,6 +46,66 @@ function url(string $path = ''): string
     return ($base === '' ? '' : $base) . '/' . $path;
 }
 
+/**
+ * Canonical public site origin for share links / QR (no trailing slash).
+ * Set config public_base_url on hosting, e.g. https://pickleball.example.com
+ * or https://example.com/pickleball — do not use localhost in production.
+ */
+function public_base_url(): string
+{
+    $config = app_config();
+    $configured = trim((string) ($config['public_base_url'] ?? ''));
+    if ($configured !== '') {
+        return rtrim($configured, '/');
+    }
+
+    // Fallback for local testing only when config is empty.
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || ((int) ($_SERVER['SERVER_PORT'] ?? 0) === 443);
+    $scheme = $https ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    return $scheme . '://' . $host . base_path();
+}
+
+function absolute_url(string $path = ''): string
+{
+    $path = ltrim($path, '/');
+    $origin = public_base_url();
+    if ($path === '') {
+        return $origin . '/';
+    }
+    // If public_base_url already includes the app subfolder, path is relative to that.
+    return $origin . '/' . $path;
+}
+
+function share_play_url(int $sessionId): string
+{
+    return absolute_url('play.php?session=' . $sessionId);
+}
+
+function qr_image_url(string $data, int $size = 240): string
+{
+    return 'https://api.qrserver.com/v1/create-qr-code/?' . http_build_query([
+        'size' => $size . 'x' . $size,
+        'data' => $data,
+        'margin' => 8,
+    ]);
+}
+
+function share_url_is_local(?string $url = null): bool
+{
+    $url = $url ?? public_base_url();
+    $host = parse_url($url, PHP_URL_HOST);
+    if (!$host) {
+        return true;
+    }
+    $host = strtolower($host);
+    return $host === 'localhost'
+        || $host === '127.0.0.1'
+        || str_ends_with($host, '.local')
+        || $host === 'host.docker.internal';
+}
+
 function e(?string $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');

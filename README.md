@@ -6,9 +6,9 @@ A simple **PHP + MySQL** app for running pickleball open play: reusable players,
 
 - **Admin setup** — add/reuse players; create an open play (courts, hours, player list)
 - **Scheduler** — 15-minute rounds, fair sit-outs, avoid repeat partners; warn + confirm if repeats are forced
-- **Play mode** — large Round N view; swipe / next-prev between rounds (each device independent)
-- **Toggles per open play** — track W–L + points (optional); 15-minute timer + sound (optional)
-- **Public link** — share `play.php?session={id}` with the group
+- **Play mode** — host starts and advances rounds; friends open a public view-only link and follow live progress
+- **Toggles per open play** — track W–L + points (optional); 15-minute timer + sound (optional, host only)
+- **Public link** — share `play.php?session={id}` (no login; view only)
 
 ## Docs
 
@@ -25,9 +25,10 @@ A simple **PHP + MySQL** app for running pickleball open play: reusable players,
 2. Import `sql/schema.sql`.
 3. Upload this project to `public_html` (or a subfolder).
 4. Copy `config.example.php` → `config.php` and set DB host / name / user / pass / port.
-5. If the app is in a subfolder and assets break, set `'base_path' => '/your-folder'`.
-6. Open `/login.php` — default password `changeme` — then change it under Admin → Dashboard.
-7. Add players → New open play → Generate schedule → **Start open play**.
+5. Set **`public_base_url`** to your live domain (e.g. `https://yourdomain.com`) — this powers the share **QR code**.
+6. If the app is in a subfolder, set `base_path` and include that path in `public_base_url`.
+7. Open `/login.php` — default password `changeme` — then change it under Admin → Dashboard.
+8. Add players → New open play → Generate → share the **QR** → **Start open play**.
 
 Full detail: **[INSTALL.md](INSTALL.md)**.
 
@@ -36,8 +37,8 @@ Full detail: **[INSTALL.md](INSTALL.md)**.
 ```text
 Admin (setup) ──generate──► MySQL (players, slots, games)
                                 ▲
-Play UI (play.php) ──read/scores─┘
-   └─ Round carousel (swipe locally on each phone)
+Play UI (play.php) ──host Start/Next/scores──┘
+   └─ Friends poll play_state.php and follow live round
 ```
 
 - **Pages** — thin PHP scripts + HTML forms  

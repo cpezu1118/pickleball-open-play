@@ -25,31 +25,69 @@ $session = $board['session'];
 $slots = $board['slots'];
 $trackResults = (int) $session['track_results'] === 1;
 $timerEnabled = (int) $session['timer_enabled'] === 1;
+$roundCount = count($slots);
+$liveRound = session_current_round($sessionId);
+$started = $liveRound >= 1;
 
-// Score save (admin only)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && post_string('action') === 'save_score') {
+// Admin-only mutations
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
+    $action = post_string('action');
+
     if (!$isAdminUser) {
-        flash_set('error', 'Only admin can enter scores.');
-        redirect('play.php?session=' . $sessionId . '&round=' . max(1, post_int('round')));
-    }
-    if (!$trackResults) {
-        flash_set('error', 'Results tracking is off for this open play.');
+        flash_set('error', 'Only the host can control open play.');
         redirect('play.php?session=' . $sessionId);
     }
-    $round = max(1, post_int('round'));
-    $err = save_game_score($sessionId, post_int('game_id'), post_int('team1_score'), post_int('team2_score'));
-    flash_set($err ? 'error' : 'success', $err ?: 'Score saved.');
-    redirect('play.php?session=' . $sessionId . '&round=' . $round . '&view=rounds');
+
+    if ($action === 'start_play') {
+        if (!session_start_play($sessionId)) {
+            flash_set('error', 'Could not start — generate a schedule first.');
+        } else {
+            flash_set('success', 'Open play started — Round 1 is live.');
+        }
+        redirect('play.php?session=' . $sessionId);
+    }
+
+    if ($action === 'next_round') {
+        if (!session_advance_round($sessionId, 1)) {
+            flash_set('error', 'Already on the last round (or not started).');
+        } else {
+            flash_set('success', 'Advanced to Round ' . session_current_round($sessionId) . '.');
+        }
+        redirect('play.php?session=' . $sessionId);
+    }
+
+    if ($action === 'prev_round') {
+        if (!session_advance_round($sessionId, -1)) {
+            flash_set('error', 'Already on Round 1 (or not started).');
+        } else {
+            flash_set('success', 'Back to Round ' . session_current_round($sessionId) . '.');
+        }
+        redirect('play.php?session=' . $sessionId);
+    }
+
+    if ($action === 'save_score') {
+        if (!$trackResults) {
+            flash_set('error', 'Results tracking is off for this open play.');
+            redirect('play.php?session=' . $sessionId);
+        }
+        $err = save_game_score($sessionId, post_int('game_id'), post_int('team1_score'), post_int('team2_score'));
+        flash_set($err ? 'error' : 'success', $err ?: 'Score saved.');
+        redirect('play.php?session=' . $sessionId);
+    }
+
+    flash_set('error', 'Unknown action.');
+    redirect('play.php?session=' . $sessionId);
 }
 
+// Refresh after possible redirects
+$session = fetch_session($sessionId) ?: $session;
+$liveRound = session_current_round($sessionId);
+$started = $liveRound >= 1;
+$revision = $roundCount ? session_play_revision($sessionId) : '';
 $standings = $trackResults ? session_standings($sessionId) : [];
-$initialRound = isset($_GET['round']) ? max(1, (int) $_GET['round']) : 1;
 $view = ($_GET['view'] ?? 'rounds') === 'standings' ? 'standings' : 'rounds';
-$roundCount = count($slots);
-if ($initialRound > $roundCount && $roundCount > 0) {
-    $initialRound = $roundCount;
-}
+$displayRound = $started ? $liveRound : 1;
 
 $pageTitle = $session['title'];
 $appName = $config['app_name'] ?? 'Pickleball Open Play';
@@ -67,8 +105,13 @@ $flash = flash_get();
 <div class="play-app"
      data-play-carousel
      data-session-id="<?= (int) $sessionId ?>"
-     data-initial-round="<?= (int) $initialRound ?>"
+     data-is-admin="<?= $isAdminUser ? '1' : '0' ?>"
+     data-started="<?= $started ? '1' : '0' ?>"
+     data-live-round="<?= (int) $liveRound ?>"
+     data-initial-round="<?= (int) $displayRound ?>"
      data-round-count="<?= (int) $roundCount ?>"
+     data-revision="<?= e($revision) ?>"
+     data-state-url="<?= e(url('play_state.php?session=' . $sessionId)) ?>"
      data-view="<?= e($view) ?>">
 
     <header class="play-top">
@@ -90,7 +133,47 @@ $flash = flash_get();
             <div class="flash flash-<?= e($flash['type']) ?> play-flash"><?= e($flash['message']) ?></div>
         <?php endif; ?>
 
-        <?php if ($trackResults && $roundCount > 0): ?>
+        <div class="play-live-bar">
+            <?php if (!$roundCount): ?>
+                <span class="badge">No schedule</span>
+            <?php elseif (!$started): ?>
+                <span class="badge">Waiting for host to start</span>
+            <?php else: ?>
+                <span class="badge badge-on">Live · Round <?= (int) $liveRound ?> of <?= (int) $roundCount ?></span>
+            <?php endif; ?>
+            <?php if (!$isAdminUser): ?>
+                <span class="play-view-only muted">View only</span>
+            <?php endif; ?>
+        </div>
+
+        <?php if ($isAdminUser && $roundCount): ?>
+            <div class="play-host-controls">
+                <?php if (!$started): ?>
+                    <form method="post">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="start_play">
+                        <button type="submit">Start open play</button>
+                    </form>
+                <?php else: ?>
+                    <form method="post">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="prev_round">
+                        <button type="submit" class="secondary" <?= $liveRound <= 1 ? 'disabled' : '' ?>>Previous round</button>
+                    </form>
+                    <form method="post">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="next_round">
+                        <button type="submit" <?= $liveRound >= $roundCount ? 'disabled' : '' ?>>Next round</button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($isAdminUser && $roundCount): ?>
+            <?php require __DIR__ . '/includes/share_card.php'; ?>
+        <?php endif; ?>
+
+        <?php if ($trackResults && $roundCount > 0 && $started): ?>
             <div class="play-tabs" role="tablist">
                 <button type="button" class="play-tab <?= $view === 'rounds' ? 'is-active' : '' ?>" data-play-tab="rounds">Rounds</button>
                 <button type="button" class="play-tab <?= $view === 'standings' ? 'is-active' : '' ?>" data-play-tab="standings">Standings</button>
@@ -105,9 +188,14 @@ $flash = flash_get();
                 <a class="btn" href="<?= e(url('admin/session.php?id=' . $sessionId)) ?>">Generate in setup</a>
             <?php endif; ?>
         </main>
+    <?php elseif (!$started && !$isAdminUser): ?>
+        <main class="play-empty">
+            <p>The host hasn’t started this open play yet.</p>
+            <p class="muted">This page will update when Round 1 goes live.</p>
+        </main>
     <?php else: ?>
 
-        <?php if ($timerEnabled): ?>
+        <?php if ($timerEnabled && $isAdminUser && $started): ?>
             <section class="play-timer-bar" data-slot-timer data-duration="<?= (int) ($slotMinutes * 60) ?>">
                 <div class="timer-display" data-timer-display>15:00</div>
                 <div class="play-timer-controls">
@@ -123,21 +211,43 @@ $flash = flash_get();
             </section>
         <?php endif; ?>
 
+        <?php if ($started || $isAdminUser): ?>
         <section class="play-panel play-rounds-panel <?= $view === 'standings' ? 'is-hidden' : '' ?>" data-play-panel="rounds">
+            <?php if ($isAdminUser && !$started): ?>
+                <p class="muted" style="text-align:center;">Preview — tap <strong>Start open play</strong> when everyone is ready. Friends stay on waiting until then.</p>
+            <?php endif; ?>
+
             <div class="play-round-meta">
-                <button type="button" class="play-nav-btn" data-play-prev aria-label="Previous round">‹</button>
+                <?php if ($isAdminUser && $started): ?>
+                    <span class="play-nav-spacer" aria-hidden="true"></span>
+                <?php else: ?>
+                    <button type="button" class="play-nav-btn" data-play-prev aria-label="Previous round">‹</button>
+                <?php endif; ?>
                 <div class="play-round-label">
-                    <span data-play-round-label>Round <?= (int) $initialRound ?></span>
+                    <span data-play-round-label>Round <?= (int) $displayRound ?></span>
                     <span class="play-round-of">of <?= (int) $roundCount ?></span>
+                    <button type="button" class="play-jump-live is-hidden" data-jump-live>Back to live</button>
                 </div>
-                <button type="button" class="play-nav-btn" data-play-next aria-label="Next round">›</button>
+                <?php if ($isAdminUser && $started): ?>
+                    <span class="play-nav-spacer" aria-hidden="true"></span>
+                <?php else: ?>
+                    <button type="button" class="play-nav-btn" data-play-next aria-label="Next round">›</button>
+                <?php endif; ?>
             </div>
 
+            <?php if (!($isAdminUser && $started)): ?>
             <div class="play-dots" data-play-dots aria-hidden="true">
                 <?php for ($i = 1; $i <= $roundCount; $i++): ?>
-                    <button type="button" class="play-dot <?= $i === $initialRound ? 'is-active' : '' ?>" data-play-dot="<?= $i ?>" aria-label="Round <?= $i ?>"></button>
+                    <button type="button" class="play-dot <?= $i === $displayRound ? 'is-active' : '' ?>" data-play-dot="<?= $i ?>" aria-label="Round <?= $i ?>"></button>
                 <?php endfor; ?>
             </div>
+            <?php else: ?>
+            <div class="play-dots" data-play-dots aria-hidden="true">
+                <?php for ($i = 1; $i <= $roundCount; $i++): ?>
+                    <span class="play-dot <?= $i === $displayRound ? 'is-active' : '' ?>" data-play-dot="<?= $i ?>"></span>
+                <?php endfor; ?>
+            </div>
+            <?php endif; ?>
 
             <div class="play-viewport" data-play-viewport>
                 <div class="play-track" data-play-track>
@@ -160,13 +270,12 @@ $flash = flash_get();
                                             <span class="play-names"><?= e($court['team2'][0]) ?> &amp; <?= e($court['team2'][1]) ?></span>
                                         </div>
 
-                                        <?php if ($trackResults): ?>
+                                        <?php if ($trackResults && $started): ?>
                                             <?php if ($isAdminUser): ?>
                                                 <form method="post" class="play-score-form">
                                                     <?= csrf_field() ?>
                                                     <input type="hidden" name="action" value="save_score">
                                                     <input type="hidden" name="game_id" value="<?= (int) $court['id'] ?>">
-                                                    <input type="hidden" name="round" value="<?= $roundNum ?>">
                                                     <div class="play-score-inputs">
                                                         <input type="number" name="team1_score" min="0" max="99" required
                                                                inputmode="numeric"
@@ -203,8 +312,9 @@ $flash = flash_get();
                 </div>
             </div>
         </section>
+        <?php endif; ?>
 
-        <?php if ($trackResults): ?>
+        <?php if ($trackResults && $started): ?>
             <section class="play-panel play-standings-panel <?= $view === 'rounds' ? 'is-hidden' : '' ?>" data-play-panel="standings">
                 <h2 class="play-standings-title">Standings</h2>
                 <div class="table-wrap play-standings-table">

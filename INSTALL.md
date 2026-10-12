@@ -56,20 +56,35 @@ Edit `config.php`:
     'charset' => 'utf8mb4',
 ],
 'base_path' => null,            // see step 5
+// Friends’ QR / share link — MUST be your real public URL (not localhost)
+'public_base_url' => 'https://yourdomain.com',
 'default_admin_password' => 'changeme',
 ```
 
-### 5. Subfolder / broken links
+### 5. Domain for QR codes (important)
+
+`public_base_url` is what gets encoded in the **share QR**. Phones must open a real hostname.
+
+| Deploy | Example `public_base_url` |
+|--------|---------------------------|
+| Site at domain root | `https://yourdomain.com` |
+| App in subfolder | `https://yourdomain.com/pickleball` |
+| Local Docker only | leave `''` (falls back to `http://localhost:8080`) |
+
+If this is wrong or left as localhost, friends scanning the QR will get a link that does not work on their phones.
+
+### 6. Subfolder / broken links (CSS & admin)
 
 If the app is at `https://example.com/pickleball/` and CSS or links 404:
 
 ```php
 'base_path' => '/pickleball',
+'public_base_url' => 'https://example.com/pickleball',
 ```
 
-If the site is at the domain root, leave `'base_path' => null`.
+If the site is at the domain root, leave `'base_path' => null` and set `public_base_url` to `https://yourdomain.com`.
 
-### 6. First login
+### 7. First login
 
 1. Open `https://your-domain/login.php` (or `/pickleball/login.php`).
 2. Password: value of `default_admin_password` in config (default `changeme`), unless you already changed it in Admin.
@@ -77,9 +92,9 @@ If the site is at the domain root, leave `'base_path' => null`.
 4. **Players** → add names.
 5. **New open play** → courts, hours, select players, optional toggles (results / timer).
 6. **Generate schedule** → confirm if partner-repeat warning appears.
-7. **Start open play** → round-by-round play UI. Share `play.php?session=ID` with friends.
+7. On the session page, use the **Share with friends** QR (or copy link) → then **Open play screen** → **Start open play**.
 
-### 7. Quick checklist
+### 8. Quick checklist
 
 | Step | Done? |
 |------|--------|
@@ -87,10 +102,12 @@ If the site is at the domain root, leave `'base_path' => null`.
 | `schema.sql` imported | |
 | `config.php` created from example | |
 | DB credentials correct | |
+| **`public_base_url` set to live domain** | |
 | Files uploaded | |
 | `base_path` set if in subfolder | |
 | Login works | |
 | Admin password changed | |
+| QR opens play page on a phone | |
 
 ### Common problems
 
@@ -159,6 +176,7 @@ docker run --rm -it --name pb-php -p 8080:8080 \
 
 1. Admin adds/selects players and creates the open play.
 2. Generate schedule (ack partner warning if shown).
-3. **Start open play** — phones open the same `play.php?session=…` link.
-4. Each device swipes rounds independently (not host-synced).
-5. Optional: enable timer / enter scores (admin) and check Standings.
+3. On setup, show the **QR** (or copy link) so friends can open the play page (view only).
+4. Admin opens play screen → **Start open play** → Round 1 is live for everyone.
+5. Admin taps **Next round** when ready; friend phones poll and follow (reload) automatically.
+6. Only admin can enter scores / control the timer; friends are view-only.

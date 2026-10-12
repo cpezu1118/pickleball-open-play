@@ -79,17 +79,19 @@ Scheduling rules (see `Scheduler.php`):
 
 ## Play mode vs admin
 
-| Concern | Admin | Play (`play.php`) |
-|---------|-------|-------------------|
-| Add players / create session | Yes | No |
+| Concern | Admin (logged in) | Friends (public URL) |
+|---------|-------------------|----------------------|
+| Add players / create session | Yes (admin pages) | No |
 | Generate / reset schedule | Yes | No |
-| View Round N courts | Preview in setup | Primary UX |
-| Swipe rounds | No | Yes (device-local) |
-| Enter scores | Yes (if toggle on) | Yes if logged in as admin |
-| Standings | Yes | Tab when tracking on |
-| Timer | Optional in setup | Shown when enabled |
+| Start open play / Next round | Yes on `play.php` | No |
+| View courts / sit-outs | Yes | Yes (view only) |
+| Enter scores | Yes if tracking on | No (see scores if entered) |
+| Standings | Yes | Yes when tracking on |
+| Timer | Host controls | Hidden |
 
-Round position is stored in **browser `sessionStorage`** per session id. Devices are **not** synced to a shared “current round.”
+**Live round** is stored on the server (`slots.status = active`). Admin Start / Next / Previous update it. Public viewers poll `play_state.php` about every 4s and reload when the revision (round or scores) changes. Friends may browse other rounds locally; the live badge tracks the host.
+
+**Share / QR:** `public_base_url` in `config.php` builds the canonical play URL for QR codes (`includes/share_card.php`). Always set this to the live domain on hosting — never leave localhost for court day.
 
 ## Security notes
 

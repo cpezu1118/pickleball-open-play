@@ -94,7 +94,8 @@ function persist_schedule(int $sessionId, array $schedule, int $slotMinutes, boo
 
     foreach ($schedule['slots'] as $index => $slot) {
         $offset = $index * $slotMinutes;
-        $status = $index === 0 ? 'active' : 'pending';
+        // All pending until admin starts open play (sets Round 1 active).
+        $status = 'pending';
         $slotStmt->bind_param('iiis', $sessionId, $index, $offset, $status);
         $slotStmt->execute();
         $slotId = (int) $mysqli->insert_id;
@@ -120,7 +121,8 @@ function persist_schedule(int $sessionId, array $schedule, int $slotMinutes, boo
     $sitStmt->close();
 
     $ack = $ackWarning || !$schedule['has_repeats'] ? 1 : 0;
-    $status = 'active';
+    // Schedule ready; live play starts when admin taps Start on play.php.
+    $status = 'draft';
     $upd = $mysqli->prepare(
         'UPDATE sessions SET status = ?, partner_warning_ack = ? WHERE id = ?'
     );
@@ -132,6 +134,137 @@ function persist_schedule(int $sessionId, array $schedule, int $slotMinutes, boo
         'has_repeats' => (bool) $schedule['has_repeats'],
         'repeated_pairs' => $schedule['repeated_pairs'],
     ];
+}
+
+/**
+ * 1-based live round from the slot marked active. 0 = not started.
+ */
+function session_current_round(int $sessionId): int
+{
+    $stmt = db()->prepare(
+        "SELECT slot_index FROM slots
+         WHERE session_id = ? AND status = 'active'
+         ORDER BY slot_index ASC LIMIT 1"
+    );
+    $stmt->bind_param('i', $sessionId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        return 0;
+    }
+    return (int) $row['slot_index'] + 1;
+}
+
+function session_has_schedule(int $sessionId): bool
+{
+    $stmt = db()->prepare('SELECT COUNT(*) AS c FROM slots WHERE session_id = ?');
+    $stmt->bind_param('i', $sessionId);
+    $stmt->execute();
+    $c = (int) ($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+    $stmt->close();
+    return $c > 0;
+}
+
+/**
+ * Set the live round (1-based). Marks earlier slots done, current active, later pending.
+ */
+function session_set_current_round(int $sessionId, int $round1Based): bool
+{
+    $mysqli = db();
+    $stmt = $mysqli->prepare(
+        'SELECT id, slot_index FROM slots WHERE session_id = ? ORDER BY slot_index ASC'
+    );
+    $stmt->bind_param('i', $sessionId);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    if (!$rows) {
+        return false;
+    }
+
+    $targetIndex = $round1Based - 1;
+    $maxIndex = (int) $rows[count($rows) - 1]['slot_index'];
+    if ($targetIndex < 0 || $targetIndex > $maxIndex) {
+        return false;
+    }
+
+    $upd = $mysqli->prepare('UPDATE slots SET status = ? WHERE id = ?');
+    foreach ($rows as $row) {
+        $idx = (int) $row['slot_index'];
+        $id = (int) $row['id'];
+        if ($idx < $targetIndex) {
+            $status = 'done';
+        } elseif ($idx === $targetIndex) {
+            $status = 'active';
+        } else {
+            $status = 'pending';
+        }
+        $upd->bind_param('si', $status, $id);
+        $upd->execute();
+    }
+    $upd->close();
+
+    $sessStatus = 'active';
+    $s = $mysqli->prepare('UPDATE sessions SET status = ? WHERE id = ?');
+    $s->bind_param('si', $sessStatus, $sessionId);
+    $s->execute();
+    $s->close();
+
+    return true;
+}
+
+function session_start_play(int $sessionId): bool
+{
+    if (!session_has_schedule($sessionId)) {
+        return false;
+    }
+    return session_set_current_round($sessionId, 1);
+}
+
+function session_advance_round(int $sessionId, int $delta): bool
+{
+    $current = session_current_round($sessionId);
+    if ($current < 1) {
+        return false;
+    }
+    $stmt = db()->prepare('SELECT COUNT(*) AS c FROM slots WHERE session_id = ?');
+    $stmt->bind_param('i', $sessionId);
+    $stmt->execute();
+    $count = (int) ($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+    $stmt->close();
+    $next = $current + $delta;
+    if ($next < 1 || $next > $count) {
+        return false;
+    }
+    return session_set_current_round($sessionId, $next);
+}
+
+/**
+ * Revision string so clients can detect round or score changes.
+ */
+function session_play_revision(int $sessionId): string
+{
+    $round = session_current_round($sessionId);
+    $stmt = db()->prepare(
+        'SELECT g.team1_score, g.team2_score, g.winner_team
+         FROM games g
+         INNER JOIN slots s ON s.id = g.slot_id
+         WHERE s.session_id = ?
+         ORDER BY s.slot_index, g.court_number'
+    );
+    $stmt->bind_param('i', $sessionId);
+    $stmt->execute();
+    $parts = [(string) $round];
+    $res = $stmt->get_result();
+    while ($row = $res->fetch_assoc()) {
+        $parts[] = ($row['team1_score'] ?? 'n') . '-' . ($row['team2_score'] ?? 'n') . ':' . ($row['winner_team'] ?? 'n');
+    }
+    $stmt->close();
+    $session = fetch_session($sessionId);
+    $parts[] = $session['status'] ?? '';
+    return md5(implode('|', $parts));
 }
 
 function load_session_board(int $sessionId): array
