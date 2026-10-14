@@ -180,6 +180,17 @@ $flash = flash_get();
         </div>
 
         <?php if ($isAdminUser && $roundCount): ?>
+            <?php require __DIR__ . '/includes/share_card.php'; ?>
+        <?php endif; ?>
+
+        <?php if ($trackResults && $roundCount > 0 && $started): ?>
+            <div class="play-tabs" role="tablist">
+                <button type="button" class="play-tab <?= $view === 'rounds' ? 'is-active' : '' ?>" data-play-tab="rounds">Rounds</button>
+                <button type="button" class="play-tab <?= $view === 'standings' ? 'is-active' : '' ?>" data-play-tab="standings">Standings</button>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($isAdminUser && $roundCount): ?>
             <div class="play-host-controls">
                 <?php if (!$started): ?>
                     <form method="post">
@@ -199,17 +210,6 @@ $flash = flash_get();
                         <button type="submit" class="btn-primary" <?= $liveRound >= $roundCount ? 'disabled' : '' ?>>Next round</button>
                     </form>
                 <?php endif; ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($isAdminUser && $roundCount): ?>
-            <?php require __DIR__ . '/includes/share_card.php'; ?>
-        <?php endif; ?>
-
-        <?php if ($trackResults && $roundCount > 0 && $started): ?>
-            <div class="play-tabs" role="tablist">
-                <button type="button" class="play-tab <?= $view === 'rounds' ? 'is-active' : '' ?>" data-play-tab="rounds">Rounds</button>
-                <button type="button" class="play-tab <?= $view === 'standings' ? 'is-active' : '' ?>" data-play-tab="standings">Standings</button>
             </div>
         <?php endif; ?>
     </header>
