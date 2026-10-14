@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/helpers.php';
 require_once __DIR__ . '/includes/session_repo.php';
 require_once __DIR__ . '/includes/score_save.php';
 
+no_cache_headers();
 $config = app_config();
 $slotMinutes = (int) ($config['slot_minutes'] ?? 15);
 $sessionId = isset($_GET['session']) ? (int) $_GET['session'] : 0;

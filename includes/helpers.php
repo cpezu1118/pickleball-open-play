@@ -1,5 +1,22 @@
 <?php
 
+/**
+ * Every page here is session-bearing (login state, CSRF tokens, live round
+ * state) and must never be served from a shared cache. Some hosts don't
+ * reliably send PHP's own default session cache-limiter headers (observed:
+ * a reverse-proxy cache serving a stale embedded CSRF token to a session
+ * that didn't generate it), so send the no-store headers explicitly rather
+ * than relying on php.ini defaults.
+ */
+function no_cache_headers(): void
+{
+    if (headers_sent()) {
+        return;
+    }
+    header('Cache-Control: no-store, no-cache, must-revalidate, private');
+    header('Pragma: no-cache');
+}
+
 function app_config(): array
 {
     static $config = null;

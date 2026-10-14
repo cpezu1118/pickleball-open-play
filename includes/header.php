@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/helpers.php';
+no_cache_headers();
 $config = app_config();
 $appName = $config['app_name'] ?? 'Pickleball Open Play';
 $pageTitle = $pageTitle ?? $appName;
