@@ -41,7 +41,7 @@ require __DIR__ . '/../includes/header.php';
     <h1>Dashboard</h1>
     <p><?= $playerCount ?> active player<?= $playerCount === 1 ? '' : 's' ?> on file.</p>
     <div class="btn-row">
-        <a class="btn" href="<?= e(url('admin/session_new.php')) ?>">New open play</a>
+        <a class="btn btn-primary" href="<?= e(url('admin/session_new.php')) ?>">New open play</a>
         <a class="btn secondary" href="<?= e(url('admin/players.php')) ?>">Manage players</a>
     </div>
 </section>
@@ -71,7 +71,7 @@ require __DIR__ . '/../includes/header.php';
                         <td><?= (int) $s['courts'] ?></td>
                         <td><?= e($s['status']) ?></td>
                         <td>
-                            <?php if ($s['status'] === 'active'): ?><span class="badge badge-on"><svg class="pin-icon" style="width:12px;height:12px"><use href="#icon-pin"></use></svg> Live</span><?php endif; ?>
+                            <?php if ($s['status'] === 'active'): ?><span class="badge badge-on"><svg class="pin-icon icon-sm"><use href="#icon-pin"></use></svg> Live</span><?php endif; ?>
                             <?php if ((int) $s['track_results']): ?><span class="badge">Results</span><?php endif; ?>
                             <?php if ((int) $s['timer_enabled']): ?><span class="badge">Timer</span><?php endif; ?>
                         </td>

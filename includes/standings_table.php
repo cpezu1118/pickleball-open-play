@@ -27,7 +27,7 @@
                 <td>
                     <span class="rank-badge <?= $rankClass ?>">
                         <?php if ($i === 0): ?>
-                            <svg class="pin-icon" style="width:14px;height:14px"><use href="#icon-trophy"></use></svg>
+                            <svg class="pin-icon icon-sm"><use href="#icon-trophy"></use></svg>
                         <?php else: ?>
                             <?= $i + 1 ?>
                         <?php endif; ?>

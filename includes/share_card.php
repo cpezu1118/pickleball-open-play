@@ -26,7 +26,7 @@ $showPlayButton = !empty($shareShowPlayButton);
                     alt="QR code to open this open play"
                 >
             </div>
-            <svg class="pin-icon qr-ball" style="width:22px;height:22px"><use href="#icon-ball"></use></svg>
+            <svg class="pin-icon icon-lg qr-ball"><use href="#icon-ball"></use></svg>
         </div>
         <div class="share-link-block">
             <label>

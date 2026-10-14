@@ -1,0 +1,31 @@
+name: Deploy to production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ftp-deploy:
+    name: FTP deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy over FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: /public_html/pezan/pickleball/
+          # config.php holds live DB credentials — it's gitignored and never
+          # touched by deploy; it must already exist on the server.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/.impeccable/**
+            config.php
+            PRODUCT.md

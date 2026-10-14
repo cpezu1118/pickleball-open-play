@@ -132,7 +132,7 @@ require __DIR__ . '/../includes/header.php';
     </p>
     <div class="btn-row">
         <?php if (!empty($board['slots'])): ?>
-            <a class="btn" href="<?= e(url('play.php?session=' . $id)) ?>">Open play screen</a>
+            <a class="btn btn-primary" href="<?= e(url('play.php?session=' . $id)) ?>">Open play screen</a>
         <?php else: ?>
             <button type="button" class="btn" disabled title="Generate a schedule first">Open play screen</button>
         <?php endif; ?>

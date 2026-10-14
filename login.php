@@ -35,7 +35,7 @@ require __DIR__ . '/includes/header.php';
             <input type="password" name="password" required autofocus>
         </label>
         <div class="btn-row">
-            <button type="submit">Log in</button>
+            <button type="submit" class="btn-primary">Log in</button>
         </div>
     </form>
     <p class="muted" style="margin-top:1rem;font-size:0.85rem;">

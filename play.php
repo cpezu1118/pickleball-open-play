@@ -149,7 +149,7 @@ $flash = flash_get();
                 <h1 class="play-title"><?= e($session['title']) ?></h1>
             </div>
             <div class="play-top-actions">
-                <span class="play-brand-mark"><svg class="pin-icon" style="width:14px;height:14px"><use href="#icon-pin"></use></svg> <?= e($appName) ?></span>
+                <span class="play-brand-mark"><svg class="pin-icon icon-sm"><use href="#icon-pin"></use></svg> <?= e($appName) ?></span>
                 <button type="button" class="sound-toggle" data-sound-toggle aria-label="Mute sound">
                     <svg class="pin-icon"><use href="#icon-sound-on"></use></svg>
                 </button>
@@ -171,7 +171,7 @@ $flash = flash_get();
             <?php elseif (!$started): ?>
                 <span class="badge">Waiting for host to start</span>
             <?php else: ?>
-                <span class="badge badge-on"><svg class="pin-icon" style="width:13px;height:13px"><use href="#icon-pin"></use></svg> Live · Round <?= (int) $liveRound ?> of <?= (int) $roundCount ?></span>
+                <span class="badge badge-on"><svg class="pin-icon icon-sm"><use href="#icon-pin"></use></svg> Live · Round <?= (int) $liveRound ?> of <?= (int) $roundCount ?></span>
             <?php endif; ?>
             <?php if (!$isAdminUser): ?>
                 <span class="play-view-only muted">View only</span>
@@ -184,7 +184,7 @@ $flash = flash_get();
                     <form method="post">
                         <?= csrf_field() ?>
                         <input type="hidden" name="action" value="start_play">
-                        <button type="submit">Start open play</button>
+                        <button type="submit" class="btn-primary">Start open play</button>
                     </form>
                 <?php else: ?>
                     <form method="post">
@@ -195,7 +195,7 @@ $flash = flash_get();
                     <form method="post">
                         <?= csrf_field() ?>
                         <input type="hidden" name="action" value="next_round">
-                        <button type="submit" <?= $liveRound >= $roundCount ? 'disabled' : '' ?>>Next round</button>
+                        <button type="submit" class="btn-primary" <?= $liveRound >= $roundCount ? 'disabled' : '' ?>>Next round</button>
                     </form>
                 <?php endif; ?>
             </div>

@@ -123,7 +123,7 @@ require __DIR__ . '/../includes/header.php';
         </div>
 
         <div class="btn-row">
-            <button type="submit" <?= $players ? '' : 'disabled' ?>>Create open play</button>
+            <button type="submit" class="btn-primary" <?= $players ? '' : 'disabled' ?>>Create open play</button>
             <a class="btn secondary" href="<?= e(url('admin/index.php')) ?>">Cancel</a>
         </div>
     </form>

@@ -42,7 +42,7 @@ require __DIR__ . '/includes/header.php';
                 </div>
                 <div>
                     <?php if ($s['status'] === 'active'): ?>
-                        <span class="badge badge-on"><svg class="pin-icon" style="width:13px;height:13px"><use href="#icon-pin"></use></svg> Live now</span>
+                        <span class="badge badge-on"><svg class="pin-icon icon-sm"><use href="#icon-pin"></use></svg> Live now</span>
                     <?php else: ?>
                         <span class="badge"><?= e(ucfirst($s['status'])) ?></span>
                     <?php endif; ?>
