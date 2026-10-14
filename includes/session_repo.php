@@ -275,7 +275,7 @@ function load_session_board(int $sessionId): array
     }
 
     $names = player_map();
-    $slots = [];
+
     $stmt = db()->prepare(
         'SELECT * FROM slots WHERE session_id = ? ORDER BY slot_index ASC'
     );
@@ -284,29 +284,45 @@ function load_session_board(int $sessionId): array
     $slotRows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
+    // Batch-fetch games and sitouts for every slot in this session (2 queries
+    // total instead of one round trip per slot) — this matters a lot on a
+    // remote DB, where each round trip costs real latency.
+    $gamesBySlot = [];
+    $gStmt = db()->prepare(
+        'SELECT g.* FROM games g
+         INNER JOIN slots s ON s.id = g.slot_id
+         WHERE s.session_id = ?
+         ORDER BY g.slot_id ASC, g.court_number ASC'
+    );
+    $gStmt->bind_param('i', $sessionId);
+    $gStmt->execute();
+    $gRes = $gStmt->get_result();
+    while ($g = $gRes->fetch_assoc()) {
+        $gamesBySlot[(int) $g['slot_id']][] = $g;
+    }
+    $gStmt->close();
+
+    $sitoutsBySlot = [];
+    $sStmt = db()->prepare(
+        'SELECT ss.slot_id, ss.player_id FROM slot_sitouts ss
+         INNER JOIN slots s ON s.id = ss.slot_id
+         WHERE s.session_id = ?'
+    );
+    $sStmt->bind_param('i', $sessionId);
+    $sStmt->execute();
+    $sRes = $sStmt->get_result();
+    while ($row = $sRes->fetch_assoc()) {
+        $pid = (int) $row['player_id'];
+        $sitoutsBySlot[(int) $row['slot_id']][] = ['id' => $pid, 'name' => $names[$pid] ?? ('#' . $pid)];
+    }
+    $sStmt->close();
+
+    $slots = [];
     foreach ($slotRows as $slot) {
         $slotId = (int) $slot['id'];
-        $gStmt = db()->prepare(
-            'SELECT * FROM games WHERE slot_id = ? ORDER BY court_number ASC'
-        );
-        $gStmt->bind_param('i', $slotId);
-        $gStmt->execute();
-        $games = $gStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $gStmt->close();
-
-        $sStmt = db()->prepare('SELECT player_id FROM slot_sitouts WHERE slot_id = ?');
-        $sStmt->bind_param('i', $slotId);
-        $sStmt->execute();
-        $sitouts = [];
-        $sRes = $sStmt->get_result();
-        while ($row = $sRes->fetch_assoc()) {
-            $pid = (int) $row['player_id'];
-            $sitouts[] = ['id' => $pid, 'name' => $names[$pid] ?? ('#' . $pid)];
-        }
-        $sStmt->close();
 
         $courtViews = [];
-        foreach ($games as $g) {
+        foreach ($gamesBySlot[$slotId] ?? [] as $g) {
             $courtViews[] = [
                 'id' => (int) $g['id'],
                 'court_number' => (int) $g['court_number'],
@@ -334,7 +350,7 @@ function load_session_board(int $sessionId): array
             'starts_offset_min' => (int) $slot['starts_offset_min'],
             'status' => $slot['status'],
             'courts' => $courtViews,
-            'sitouts' => $sitouts,
+            'sitouts' => $sitoutsBySlot[$slotId] ?? [],
         ];
     }
 
@@ -344,9 +360,9 @@ function load_session_board(int $sessionId): array
 /**
  * @return array<int, array{player_id:int,name:string,w:int,l:int,pf:int,pa:int,diff:int}>
  */
-function session_standings(int $sessionId): array
+function session_standings(int $sessionId, ?array $board = null): array
 {
-    $board = load_session_board($sessionId);
+    $board = $board ?? load_session_board($sessionId);
     if (!$board) {
         return [];
     }

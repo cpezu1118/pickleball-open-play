@@ -71,7 +71,8 @@ require __DIR__ . '/../includes/header.php';
                         <td><?= (int) $s['courts'] ?></td>
                         <td><?= e($s['status']) ?></td>
                         <td>
-                            <?php if ((int) $s['track_results']): ?><span class="badge badge-on">Results</span><?php endif; ?>
+                            <?php if ($s['status'] === 'active'): ?><span class="badge badge-on"><svg class="pin-icon" style="width:12px;height:12px"><use href="#icon-pin"></use></svg> Live</span><?php endif; ?>
+                            <?php if ((int) $s['track_results']): ?><span class="badge">Results</span><?php endif; ?>
                             <?php if ((int) $s['timer_enabled']): ?><span class="badge">Timer</span><?php endif; ?>
                         </td>
                         <td>

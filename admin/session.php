@@ -249,28 +249,10 @@ require __DIR__ . '/../includes/header.php';
 <?php endif; ?>
 
 <?php if ((int) $session['track_results'] && $board['slots']): ?>
-    <?php $standings = session_standings($id); ?>
+    <?php $standings = session_standings($id, $board); ?>
     <section class="panel">
         <h2>Standings</h2>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr><th>Player</th><th>W</th><th>L</th><th>PF</th><th>PA</th><th>Diff</th></tr>
-                </thead>
-                <tbody>
-                <?php foreach ($standings as $i => $row): ?>
-                    <tr class="<?= $i === 0 ? 'standings-top' : '' ?>">
-                        <td><?= e($row['name']) ?></td>
-                        <td><?= (int) $row['w'] ?></td>
-                        <td><?= (int) $row['l'] ?></td>
-                        <td><?= (int) $row['pf'] ?></td>
-                        <td><?= (int) $row['pa'] ?></td>
-                        <td><?= (int) $row['diff'] ?></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+        <?php require __DIR__ . '/../includes/standings_table.php'; ?>
     </section>
 <?php endif; ?>
 

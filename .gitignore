@@ -9,3 +9,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.log
+
+# Impeccable design-skill working state (screenshots, telemetry)
+.impeccable/

@@ -15,14 +15,18 @@ $showPlayButton = !empty($shareShowPlayButton);
     <p class="muted">Friends scan this QR (or open the link). No login — view only. They follow the live round you control.</p>
 
     <div class="share-card-grid">
-        <div class="share-qr-wrap">
-            <img
-                class="share-qr"
-                src="<?= e($qrUrl) ?>"
-                width="240"
-                height="240"
-                alt="QR code to open this open play"
-            >
+        <div class="share-qr-frame">
+            <span class="scan-bubble">Scan me!</span>
+            <div class="share-qr-wrap">
+                <img
+                    class="share-qr"
+                    src="<?= e($qrUrl) ?>"
+                    width="240"
+                    height="240"
+                    alt="QR code to open this open play"
+                >
+            </div>
+            <svg class="pin-icon qr-ball" style="width:22px;height:22px"><use href="#icon-ball"></use></svg>
         </div>
         <div class="share-link-block">
             <label>

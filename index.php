@@ -24,7 +24,9 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <?php if (!$sessions): ?>
-    <p class="muted">No open plays yet. An admin can create one after logging in.</p>
+    <section class="panel">
+        <p class="muted">No open plays yet. An admin can create one after logging in.</p>
+    </section>
 <?php else: ?>
     <ul class="list-plain panel">
         <?php foreach ($sessions as $s): ?>
@@ -36,11 +38,15 @@ require __DIR__ . '/includes/header.php';
                     <div class="muted">
                         <?= e($s['play_date']) ?>
                         · <?= (int) $s['courts'] ?> courts
-                        · <?= e($s['status']) ?>
                     </div>
                 </div>
                 <div>
-                    <?php if ((int) $s['track_results']): ?><span class="badge badge-on">Results</span><?php endif; ?>
+                    <?php if ($s['status'] === 'active'): ?>
+                        <span class="badge badge-on"><svg class="pin-icon" style="width:13px;height:13px"><use href="#icon-pin"></use></svg> Live now</span>
+                    <?php else: ?>
+                        <span class="badge"><?= e(ucfirst($s['status'])) ?></span>
+                    <?php endif; ?>
+                    <?php if ((int) $s['track_results']): ?><span class="badge">Results</span><?php endif; ?>
                     <?php if ((int) $s['timer_enabled']): ?><span class="badge">Timer</span><?php endif; ?>
                 </div>
             </li>

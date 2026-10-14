@@ -85,7 +85,7 @@ $session = fetch_session($sessionId) ?: $session;
 $liveRound = session_current_round($sessionId);
 $started = $liveRound >= 1;
 $revision = $roundCount ? session_play_revision($sessionId) : '';
-$standings = $trackResults ? session_standings($sessionId) : [];
+$standings = $trackResults ? session_standings($sessionId, $board) : [];
 $view = ($_GET['view'] ?? 'rounds') === 'standings' ? 'standings' : 'rounds';
 $displayRound = $started ? $liveRound : 1;
 
@@ -102,6 +102,34 @@ $flash = flash_get();
     <link rel="stylesheet" href="<?= e(url('assets/app.css')) ?>">
 </head>
 <body class="play-body">
+<svg class="pin-sprite" aria-hidden="true">
+    <symbol id="icon-pin" viewBox="0 0 24 24">
+        <rect x="5" y="2" width="14" height="12" rx="6" fill="currentColor" />
+        <rect x="10.5" y="13" width="3" height="8" rx="1.5" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-ball" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="currentColor" />
+        <circle cx="8" cy="9" r="1.1" fill="rgba(58,31,71,0.3)" />
+        <circle cx="14" cy="8" r="1.1" fill="rgba(58,31,71,0.3)" />
+        <circle cx="16" cy="13" r="1.1" fill="rgba(58,31,71,0.3)" />
+        <circle cx="10" cy="15" r="1.1" fill="rgba(58,31,71,0.3)" />
+    </symbol>
+    <symbol id="icon-trophy" viewBox="0 0 24 24">
+        <path d="M7 3h10v3c0 3-2 5-4.5 5.4V14H14a1 1 0 1 1 0 2h-4a1 1 0 1 1 0-2h1.5v-1.6C9 11 7 9 7 6V3z" fill="currentColor" />
+        <rect x="9" y="17" width="6" height="2" rx="1" fill="currentColor" />
+        <path d="M5 4H3v1a4 4 0 0 0 4 4V7a2 2 0 0 1-2-2V4z" fill="currentColor" />
+        <path d="M19 4h2v1a4 4 0 0 1-4 4V7a2 2 0 0 0 2-2V4z" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-sound-on" viewBox="0 0 24 24">
+        <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" />
+        <path d="M16.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
+        <path d="M19 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
+    </symbol>
+    <symbol id="icon-sound-off" viewBox="0 0 24 24">
+        <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" />
+        <path d="M16 9l5 5M21 9l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </symbol>
+</svg>
 <div class="play-app"
      data-play-carousel
      data-session-id="<?= (int) $sessionId ?>"
@@ -112,15 +140,19 @@ $flash = flash_get();
      data-round-count="<?= (int) $roundCount ?>"
      data-revision="<?= e($revision) ?>"
      data-state-url="<?= e(url('play_state.php?session=' . $sessionId)) ?>"
-     data-view="<?= e($view) ?>">
+     data-view="<?= e($view) ?>"
+     data-celebrate="<?= ($flash && $flash['message'] === 'Score saved.') ? '1' : '0' ?>">
 
     <header class="play-top">
         <div class="play-top-row">
             <div class="play-title-block">
-                <p class="play-eyebrow"><?= e($appName) ?></p>
                 <h1 class="play-title"><?= e($session['title']) ?></h1>
             </div>
             <div class="play-top-actions">
+                <span class="play-brand-mark"><svg class="pin-icon" style="width:14px;height:14px"><use href="#icon-pin"></use></svg> <?= e($appName) ?></span>
+                <button type="button" class="sound-toggle" data-sound-toggle aria-label="Mute sound">
+                    <svg class="pin-icon"><use href="#icon-sound-on"></use></svg>
+                </button>
                 <?php if ($isAdminUser): ?>
                     <a class="play-link" href="<?= e(url('admin/session.php?id=' . $sessionId)) ?>">Setup</a>
                 <?php else: ?>
@@ -139,7 +171,7 @@ $flash = flash_get();
             <?php elseif (!$started): ?>
                 <span class="badge">Waiting for host to start</span>
             <?php else: ?>
-                <span class="badge badge-on">Live · Round <?= (int) $liveRound ?> of <?= (int) $roundCount ?></span>
+                <span class="badge badge-on"><svg class="pin-icon" style="width:13px;height:13px"><use href="#icon-pin"></use></svg> Live · Round <?= (int) $liveRound ?> of <?= (int) $roundCount ?></span>
             <?php endif; ?>
             <?php if (!$isAdminUser): ?>
                 <span class="play-view-only muted">View only</span>
@@ -250,6 +282,7 @@ $flash = flash_get();
             <?php endif; ?>
 
             <div class="play-viewport" data-play-viewport>
+                <div class="ball-transit" data-ball-transit aria-hidden="true"></div>
                 <div class="play-track" data-play-track>
                     <?php foreach ($slots as $slot): ?>
                         <?php
@@ -301,11 +334,11 @@ $flash = flash_get();
 
                             <?php if ($slot['sitouts']): ?>
                                 <div class="play-sitouts">
-                                    <span class="play-sitouts-label">Sitting out</span>
+                                    <span class="play-sitouts-label">On the bench</span>
                                     <span><?= e(implode(', ', array_column($slot['sitouts'], 'name'))) ?></span>
                                 </div>
                             <?php else: ?>
-                                <div class="play-sitouts play-sitouts-empty">Everyone playing</div>
+                                <div class="play-sitouts play-sitouts-empty">Everyone's in!</div>
                             <?php endif; ?>
                         </article>
                     <?php endforeach; ?>
@@ -318,30 +351,7 @@ $flash = flash_get();
             <section class="play-panel play-standings-panel <?= $view === 'rounds' ? 'is-hidden' : '' ?>" data-play-panel="standings">
                 <h2 class="play-standings-title">Standings</h2>
                 <div class="table-wrap play-standings-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Player</th>
-                                <th>W</th>
-                                <th>L</th>
-                                <th>PF</th>
-                                <th>PA</th>
-                                <th>Diff</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach ($standings as $i => $row): ?>
-                            <tr class="<?= $i === 0 ? 'standings-top' : '' ?>">
-                                <td><?= e($row['name']) ?></td>
-                                <td><?= (int) $row['w'] ?></td>
-                                <td><?= (int) $row['l'] ?></td>
-                                <td><?= (int) $row['pf'] ?></td>
-                                <td><?= (int) $row['pa'] ?></td>
-                                <td><?= (int) $row['diff'] ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    <?php require __DIR__ . '/includes/standings_table.php'; ?>
                 </div>
             </section>
         <?php endif; ?>

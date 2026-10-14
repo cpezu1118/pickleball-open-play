@@ -16,7 +16,7 @@ return [
         'pass' => 'YOUR_DB_PASSWORD',
         'charset' => 'utf8mb4',
     ],
-    'app_name' => 'Pickleball Open Play',
+    'app_name' => 'Pin & Paddle',
     // Leave null to auto-detect. Set if links break in a subfolder, e.g. '/pickleball-open-play'
     'base_path' => null,
     /**
