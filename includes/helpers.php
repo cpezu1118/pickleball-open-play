@@ -1,6 +1,35 @@
 <?php
 
 /**
+ * Some shared hosts restrict PHP (via open_basedir) to the account's own
+ * file tree, while PHP's default session.save_path points outside it.
+ * session_start() then fails silently: the same session id round-trips via
+ * cookie, but $_SESSION is never actually persisted between requests (every
+ * request sees an empty session — symptom observed in production: CSRF
+ * token mismatches on every single login attempt). Point sessions at a
+ * writable directory inside this app instead, once per process.
+ */
+(function () {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    $dir = __DIR__ . '/../.sessions';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0700, true);
+    }
+    if (is_dir($dir) && is_writable($dir)) {
+        $guard = $dir . '/.htaccess';
+        if (!file_exists($guard)) {
+            @file_put_contents($guard, "Require all denied\nDeny from all\n");
+        }
+        session_save_path($dir);
+    }
+})();
+
+/**
  * Every page here is session-bearing (login state, CSRF tokens, live round
  * state) and must never be served from a shared cache. Some hosts don't
  * reliably send PHP's own default session cache-limiter headers (observed:
